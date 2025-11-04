@@ -3,15 +3,14 @@ resource "null_resource" "deploy_stellartrack" {
     always_run = timestamp()  # Force run on every apply
   }
 
+  # ✅ Linux-compatible deploy provisioner
   provisioner "local-exec" {
     command = "bash ./deploy.sh"
-    interpreter = ["cmd", "/c"]
   }
 
-  # Rollback on destroy
+  # ✅ Optional rollback provisioner (Linux)
   provisioner "local-exec" {
-    when        = destroy
-    command     = "powershell -ExecutionPolicy Bypass -File ${path.module}/rollback.ps1"
-    interpreter = ["cmd", "/c"]
+    when    = destroy
+    command = "bash ${path.module}/rollback.sh"
   }
 }
