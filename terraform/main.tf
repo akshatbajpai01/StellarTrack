@@ -4,7 +4,7 @@ resource "null_resource" "deploy_stellartrack" {
   }
 
   provisioner "local-exec" {
-    command     = "powershell -ExecutionPolicy Bypass -File ${path.module}/deploy.ps1"
+    command = "bash ./deploy.sh"
     interpreter = ["cmd", "/c"]
   }
 
