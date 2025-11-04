@@ -2,22 +2,19 @@ pipeline {
     agent any
 
     environment {
-        // Update the NGINX path for Linux
-        NGINX_PATH = '/var/www/html/stellartrack'
+        TERRAFORM_DIR = "terraform"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/rishabkm/StellarTrack.git',
-                    branch: 'main'
+                git branch: 'main', url: 'https://github.com/akshatbajpai01/StellarTrack.git'
             }
         }
 
         stage('Terraform Init') {
             steps {
-                dir('terraform') {
+                dir("${TERRAFORM_DIR}") {
                     sh 'terraform init'
                 }
             }
@@ -25,34 +22,23 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                dir('terraform') {
-                    // Apply infrastructure changes using Terraform
+                dir("${TERRAFORM_DIR}") {
                     sh 'terraform apply -auto-approve'
-                }
-            }
-            post {
-                failure {
-                    // Run rollback script if deployment fails
-                    sh 'bash terraform/rollback.sh || echo "No rollback script found"'
-
-                    script {
-                        // Optional: trigger Jenkins rebuild if deployment fails
-                        def buildUrl = "http://localhost:8080/job/automation/${BUILD_NUMBER}/rebuild"
-                        sh "curl -X POST ${buildUrl} || true"
-                    }
                 }
             }
         }
 
         stage('Restart NGINX') {
             steps {
-                // Restart NGINX service on Linux
-                sh '''
-                    echo "Restarting NGINX service..."
-                    sudo systemctl restart nginx
-                    echo "NGINX restarted successfully!"
-                '''
+                sh 'sudo systemctl restart nginx'
             }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Deployment failed. Attempting rollback...'
+            sh 'bash terraform/rollback.sh || echo "No rollback script found"'
         }
     }
 }
