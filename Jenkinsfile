@@ -1,44 +1,56 @@
 pipeline {
     agent any
+
     environment {
-        NGINX_PATH = 'C:\\nginx\\html\\stellartrack'
+        // Update the NGINX path for Linux
+        NGINX_PATH = '/var/www/html/stellartrack'
     }
+
     stages {
+
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/rishabkm/StellarTrack.git', 
-                     branch: 'main'
+                git url: 'https://github.com/rishabkm/StellarTrack.git',
+                    branch: 'main'
             }
         }
+
         stage('Terraform Init') {
             steps {
                 dir('terraform') {
-                    bat 'terraform init'
+                    sh 'terraform init'
                 }
             }
         }
+
         stage('Deploy') {
             steps {
                 dir('terraform') {
-                    bat 'terraform apply -auto-approve'
+                    // Apply infrastructure changes using Terraform
+                    sh 'terraform apply -auto-approve'
                 }
             }
             post {
                 failure {
-                    bat 'powershell -File terraform\\rollback.ps1'
+                    // Run rollback script if deployment fails
+                    sh 'bash terraform/rollback.sh || echo "No rollback script found"'
+
                     script {
-                        // Trigger rollback in Jenkins if deployment fails
+                        // Optional: trigger Jenkins rebuild if deployment fails
                         def buildUrl = "http://localhost:8080/job/automation/${BUILD_NUMBER}/rebuild"
-                        sh "curl -X POST ${buildUrl}"
+                        sh "curl -X POST ${buildUrl} || true"
                     }
                 }
             }
         }
+
         stage('Restart NGINX') {
             steps {
-                bat '''
-                    taskkill /F /IM nginx.exe || echo "NGINX not running"
-                    start "" "C:\\nginx\\nginx.exe"
+                // Restart NGINX service on Linux
+                sh '''
+                    echo "Restarting NGINX service..."
+                    sudo systemctl restart nginx
+                    echo "NGINX restarted successfully!"
                 '''
             }
         }
